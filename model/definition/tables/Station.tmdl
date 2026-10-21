@@ -1,0 +1,28 @@
+/// One row per Lakefront Bike Share station.
+table Station
+
+	column 'Station Code'
+		dataType: string
+		isKey
+		summarizeBy: none
+		sourceColumn: Station Code
+
+	column 'Station Name'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Station Name
+
+	column District
+		dataType: string
+		summarizeBy: none
+		sourceColumn: District
+
+	partition Station = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Database(Server, Database),
+				    Data = Source{[Schema = "Analytics", Item = "Station"]}[Data]
+				in
+				    Data
+

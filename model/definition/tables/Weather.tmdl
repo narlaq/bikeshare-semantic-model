@@ -1,0 +1,95 @@
+/// One row per day of Chicago O'Hare weather (NOAA GHCN-Daily, station USW00094846).
+/// Kept as its own fact table: joining weather onto station rows would count each day's rain 36 times.
+table Weather
+
+	measure 'Precipitation (in)' = SUM ( Weather[Precipitation In] )
+		formatString: #,0.00
+		displayFolder: Weather
+
+	measure 'Snowfall (in)' = SUM ( Weather[Snowfall In] )
+		formatString: #,0.0
+		displayFolder: Weather
+
+	/// Average daily high over the days in context. Not additive: the total is the average of all those days.
+	measure 'Average High (°F)' = AVERAGE ( Weather[High Temp F] )
+		formatString: #,0.0
+		displayFolder: Weather
+
+	measure 'Days At Or Above 90°F' =
+			CALCULATE (
+			    COUNTROWS ( Weather ),
+			    KEEPFILTERS ( Weather[High Temp F] >= 90 )
+			)
+		formatString: #,0
+		displayFolder: Weather
+
+	/// Days with at least 0.01 in of precipitation, NOAA's usual threshold for a measurable day.
+	measure 'Rain Days' =
+			CALCULATE (
+			    COUNTROWS ( Weather ),
+			    KEEPFILTERS ( Weather[Precipitation In] >= 0.01 )
+			)
+		formatString: #,0
+		displayFolder: Weather
+
+	/// Years that have at least one weather reading in the current filter context.
+	measure 'Years Observed' = COUNTROWS ( SUMMARIZE ( Weather, 'Date'[Year] ) )
+		formatString: #,0
+		displayFolder: Weather
+
+	/// Normalizes hot days by the number of years in context, so decades with partial data compare fairly.
+	measure 'Hot Days per Year' = DIVIDE ( [Days At Or Above 90°F], [Years Observed] )
+		formatString: #,0.0
+		displayFolder: Weather
+
+	column Date
+		dataType: dateTime
+		isHidden
+		formatString: mm/dd/yyyy
+		summarizeBy: none
+		sourceColumn: Date
+
+	column 'Precipitation In'
+		dataType: double
+		isHidden
+		formatString: #,0.00
+		summarizeBy: none
+		sourceColumn: Precipitation In
+
+	column 'Snowfall In'
+		dataType: double
+		isHidden
+		formatString: #,0.0
+		summarizeBy: none
+		sourceColumn: Snowfall In
+
+	column 'Snow Depth In'
+		dataType: double
+		isHidden
+		formatString: #,0.0
+		summarizeBy: none
+		sourceColumn: Snow Depth In
+
+	column 'High Temp F'
+		dataType: double
+		isHidden
+		formatString: #,0.0
+		summarizeBy: none
+		sourceColumn: High Temp F
+
+	column 'Low Temp F'
+		dataType: double
+		isHidden
+		formatString: #,0.0
+		summarizeBy: none
+		sourceColumn: Low Temp F
+
+	partition Weather = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Database(Server, Database),
+				    Data = Source{[Schema = "Analytics", Item = "Weather"]}[Data]
+				in
+				    Data
+

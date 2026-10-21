@@ -1,0 +1,6 @@
+/// SQL Server instance that holds the ReportIngestionDemo warehouse.
+expression Server = "localhost" meta [IsParameterQuery = true, Type = "Text", IsParameterQueryRequired = true]
+
+/// Database built by the report-ingestion project, with the Analytics views from sql/analytics_views.sql.
+expression Database = "ReportIngestionDemo" meta [IsParameterQuery = true, Type = "Text", IsParameterQueryRequired = true]
+

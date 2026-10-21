@@ -1,0 +1,4 @@
+# Tabular Editor and Power BI local caches
+*.abf
+.pbi/
+localSettings.json

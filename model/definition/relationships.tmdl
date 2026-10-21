@@ -1,0 +1,12 @@
+relationship 'Station Activity to Date'
+	fromColumn: 'Station Activity'.Date
+	toColumn: Date.Date
+
+relationship 'Station Activity to Station'
+	fromColumn: 'Station Activity'.'Station Code'
+	toColumn: Station.'Station Code'
+
+relationship 'Weather to Date'
+	fromColumn: Weather.Date
+	toColumn: Date.Date
+

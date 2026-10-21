@@ -1,0 +1,156 @@
+/// One row per day from 1959 through 2026 (whole years), marked as the model's date table.
+/// Each day also carries Chicago O'Hare's weather as categories, so ridership can be sliced by weather.
+table Date
+	dataCategory: Time
+
+	column Date
+		dataType: dateTime
+		isKey
+		formatString: mm/dd/yyyy
+		summarizeBy: none
+		sourceColumn: Date
+
+	column Year
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Year
+
+	column Quarter
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Quarter
+
+	column 'Year Quarter'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Year Quarter
+		sortByColumn: 'Year Quarter Number'
+
+	column 'Year Quarter Number'
+		dataType: int64
+		isHidden
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Year Quarter Number
+
+	column 'Month Number'
+		dataType: int64
+		isHidden
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Month Number
+
+	column Month
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Month
+		sortByColumn: 'Month Number'
+
+	column 'Year Month'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Year Month
+		sortByColumn: 'Year Month Number'
+
+	column 'Year Month Number'
+		dataType: int64
+		isHidden
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Year Month Number
+
+	column 'Day of Week'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Day of Week
+		sortByColumn: 'Day of Week Number'
+
+	column 'Day of Week Number'
+		dataType: int64
+		isHidden
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Day of Week Number
+
+	column 'Day Type'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Day Type
+
+	column Decade
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Decade
+
+	column Season
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Season
+		sortByColumn: 'Season Number'
+
+	column 'Season Number'
+		dataType: int64
+		isHidden
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Season Number
+
+	/// TRUE through the last day the bike-share reports cover. Time intelligence uses it to keep
+	/// prior-year comparisons from matching a partial year against a full one.
+	column 'Is Reported'
+		dataType: boolean
+		isHidden
+		formatString: """Yes"";""Yes"";""No"""
+		summarizeBy: none
+		sourceColumn: Is Reported
+
+	column 'Precipitation Category'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Precipitation Category
+		sortByColumn: 'Precipitation Category Number'
+
+	column 'Precipitation Category Number'
+		dataType: int64
+		isHidden
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Precipitation Category Number
+
+	column 'High Temperature Band'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: High Temperature Band
+		sortByColumn: 'High Temperature Band Number'
+
+	column 'High Temperature Band Number'
+		dataType: int64
+		isHidden
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: High Temperature Band Number
+
+	hierarchy Calendar
+
+		level Year
+			column: Year
+
+		level 'Year Quarter'
+			column: 'Year Quarter'
+
+		level 'Year Month'
+			column: 'Year Month'
+
+		level Date
+			column: Date
+
+	partition Date = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Database(Server, Database),
+				    Data = Source{[Schema = "Analytics", Item = "Date"]}[Data]
+				in
+				    Data
+

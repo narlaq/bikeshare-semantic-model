@@ -1,0 +1,99 @@
+/// Period-to-date and prior-year comparisons for any measure.
+/// Precedence 20 is higher than Trend Period's, so when both are used this group applies first
+/// (shifting the dates) and the rolling window is then measured inside the shifted period.
+table 'Time Intelligence'
+
+	calculationGroup
+		precedence: 20
+
+		calculationItem Current = SELECTEDMEASURE ()
+			ordinal: 0
+
+		calculationItem MTD =
+				CALCULATE (
+				    SELECTEDMEASURE (),
+				    DATESMTD ( 'Date'[Date] )
+				)
+			ordinal: 1
+
+		calculationItem QTD =
+				CALCULATE (
+				    SELECTEDMEASURE (),
+				    DATESQTD ( 'Date'[Date] )
+				)
+			ordinal: 2
+
+		calculationItem YTD =
+				CALCULATE (
+				    SELECTEDMEASURE (),
+				    DATESYTD ( 'Date'[Date] )
+				)
+			ordinal: 3
+
+		/// Same period last year, limited to the dates the current period has actually reported.
+		/// For 2026 (reported through September) this returns January through September 2025,
+		/// not all of 2025, so the comparison doesn't show a misleading 20% drop.
+		calculationItem PY =
+				CALCULATE (
+				    SELECTEDMEASURE (),
+				    CALCULATETABLE (
+				        SAMEPERIODLASTYEAR ( 'Date'[Date] ),
+				        'Date'[Is Reported] = TRUE ()
+				    )
+				)
+			ordinal: 4
+
+		/// Blank unless both periods have a value; a missing prior year is not a 100% gain.
+		calculationItem YoY =
+				VAR CurrentValue = SELECTEDMEASURE ()
+				VAR PriorValue =
+				    CALCULATE (
+				        SELECTEDMEASURE (),
+				        CALCULATETABLE (
+				            SAMEPERIODLASTYEAR ( 'Date'[Date] ),
+				            'Date'[Is Reported] = TRUE ()
+				        )
+				    )
+				VAR Result =
+				    IF (
+				        NOT ISBLANK ( CurrentValue ) && NOT ISBLANK ( PriorValue ),
+				        CurrentValue - PriorValue
+				    )
+				RETURN
+				    Result
+			ordinal: 5
+
+		/// DIVIDE returns blank when the prior period is blank or zero, since there's nothing to compare against.
+		calculationItem 'YoY %' =
+				VAR CurrentValue = SELECTEDMEASURE ()
+				VAR PriorValue =
+				    CALCULATE (
+				        SELECTEDMEASURE (),
+				        CALCULATETABLE (
+				            SAMEPERIODLASTYEAR ( 'Date'[Date] ),
+				            'Date'[Is Reported] = TRUE ()
+				        )
+				    )
+				VAR Result =
+				    IF (
+				        NOT ISBLANK ( CurrentValue ),
+				        DIVIDE ( CurrentValue - PriorValue, PriorValue )
+				    )
+				RETURN
+				    Result
+			ordinal: 6
+			formatStringDefinition = "#,0.0%;-#,0.0%;#,0.0%"
+
+	column 'Time Calculation'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Name
+		sortByColumn: Ordinal
+
+	column Ordinal
+		dataType: int64
+		isHidden
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Ordinal
+

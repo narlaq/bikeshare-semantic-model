@@ -1,0 +1,128 @@
+/// One row per station per day, from the monthly station activity reports.
+table 'Station Activity'
+
+	/// Bikes checked out. Additive across stations and dates.
+	measure Trips = SUM ( 'Station Activity'[Trips Out] )
+		formatString: #,0
+		displayFolder: Ridership
+
+	/// Bikes returned. Additive across stations and dates.
+	measure Returns = SUM ( 'Station Activity'[Trips In] )
+		formatString: #,0
+		displayFolder: Ridership
+
+	/// Returns minus trips. Positive means bikes piled up at the station and need to be moved out.
+	measure 'Net Bike Flow' = [Returns] - [Trips]
+		formatString: +#,0;-#,0;0
+		displayFolder: Ridership
+
+	measure Revenue = SUM ( 'Station Activity'[Revenue Amount] )
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		displayFolder: Ridership
+
+	/// Ratio of totals, so the total row is total revenue over total trips (not an average of station averages).
+	measure 'Revenue per Trip' = DIVIDE ( [Revenue], [Trips] )
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		displayFolder: Ridership
+
+	/// Weighted by trips: total riding time over total trips. Averaging the report's per-station
+	/// averages would give a quiet station the same weight as Navy Pier.
+	measure 'Average Ride Minutes' =
+			VAR RideSeconds = SUM ( 'Station Activity'[Ride Seconds] )
+			VAR Result = DIVIDE ( RideSeconds, [Trips] * 60 )
+			RETURN
+			    Result
+		formatString: #,0.0
+		displayFolder: Ridership
+
+	/// Calendar days with at least one station report in the current filter context.
+	/// Not additive: the total counts each day once, however many stations reported it.
+	measure 'Days Reported' = DISTINCTCOUNT ( 'Station Activity'[Date] )
+		formatString: #,0
+		displayFolder: Ridership
+
+	/// Trips per reported day. Dividing by reported days (not calendar days) keeps partial
+	/// months and weather categories with few days comparable.
+	measure 'Average Daily Trips' = DIVIDE ( [Trips], [Days Reported] )
+		formatString: #,0
+		displayFolder: Ridership
+
+	/// Station-days with at least one trip. KEEPFILTERS so a report filter on trips is intersected, not replaced.
+	measure 'Station Days Operating' =
+			CALCULATE (
+			    COUNTROWS ( 'Station Activity' ),
+			    KEEPFILTERS ( 'Station Activity'[Trips Out] > 0 )
+			)
+		formatString: #,0
+		displayFolder: Ridership
+
+	/// Average daily trips compared with dry days under the same other filters (year, season, station).
+	/// The filter on Precipitation Category replaces only that column, so it is meaningful by month,
+	/// season, or weather category. At the single-day level it is blank unless that day was dry.
+	measure 'Trips vs Dry Days %' =
+			VAR AverageDailyTrips = [Average Daily Trips]
+			VAR DryDayAverage =
+			    CALCULATE (
+			        [Average Daily Trips],
+			        'Date'[Precipitation Category] = "Dry"
+			    )
+			VAR Result =
+			    IF (
+			        NOT ISBLANK ( AverageDailyTrips ),
+			        DIVIDE ( AverageDailyTrips - DryDayAverage, DryDayAverage )
+			    )
+			RETURN
+			    Result
+		formatString: #,0.0%;-#,0.0%;#,0.0%
+		displayFolder: Ridership vs Weather
+
+	column Date
+		dataType: dateTime
+		isHidden
+		formatString: mm/dd/yyyy
+		summarizeBy: none
+		sourceColumn: Date
+
+	column 'Station Code'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: Station Code
+
+	column 'Trips Out'
+		dataType: int64
+		isHidden
+		formatString: #,0
+		summarizeBy: none
+		sourceColumn: Trips Out
+
+	column 'Trips In'
+		dataType: int64
+		isHidden
+		formatString: #,0
+		summarizeBy: none
+		sourceColumn: Trips In
+
+	column 'Ride Seconds'
+		dataType: int64
+		isHidden
+		formatString: #,0
+		summarizeBy: none
+		sourceColumn: Ride Seconds
+
+	column 'Revenue Amount'
+		dataType: decimal
+		isHidden
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		summarizeBy: none
+		sourceColumn: Revenue
+
+	partition 'Station Activity' = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Database(Server, Database),
+				    Data = Source{[Schema = "Analytics", Item = "Station Activity"]}[Data]
+				in
+				    Data
+

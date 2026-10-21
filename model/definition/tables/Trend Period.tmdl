@@ -1,0 +1,77 @@
+/// Rolling windows for trend lines. Each window ends on the last reported date in the current
+/// filter context, so a 2026 total doesn't measure the empty weeks after the data ends.
+table 'Trend Period'
+
+	calculationGroup
+		precedence: 10
+
+		calculationItem 'Selected Period' = SELECTEDMEASURE ()
+			ordinal: 0
+
+		calculationItem 'Rolling 7 Days' =
+				VAR LastReportedDate =
+				    CALCULATE (
+				        MAX ( 'Date'[Date] ),
+				        KEEPFILTERS ( 'Date'[Is Reported] = TRUE () )
+				    )
+				VAR Result =
+				    IF (
+				        NOT ISBLANK ( LastReportedDate ),
+				        CALCULATE (
+				            SELECTEDMEASURE (),
+				            DATESINPERIOD ( 'Date'[Date], LastReportedDate, -7, DAY )
+				        )
+				    )
+				RETURN
+				    Result
+			ordinal: 1
+
+		calculationItem 'Rolling 28 Days' =
+				VAR LastReportedDate =
+				    CALCULATE (
+				        MAX ( 'Date'[Date] ),
+				        KEEPFILTERS ( 'Date'[Is Reported] = TRUE () )
+				    )
+				VAR Result =
+				    IF (
+				        NOT ISBLANK ( LastReportedDate ),
+				        CALCULATE (
+				            SELECTEDMEASURE (),
+				            DATESINPERIOD ( 'Date'[Date], LastReportedDate, -28, DAY )
+				        )
+				    )
+				RETURN
+				    Result
+			ordinal: 2
+
+		calculationItem 'Rolling 12 Months' =
+				VAR LastReportedDate =
+				    CALCULATE (
+				        MAX ( 'Date'[Date] ),
+				        KEEPFILTERS ( 'Date'[Is Reported] = TRUE () )
+				    )
+				VAR Result =
+				    IF (
+				        NOT ISBLANK ( LastReportedDate ),
+				        CALCULATE (
+				            SELECTEDMEASURE (),
+				            DATESINPERIOD ( 'Date'[Date], LastReportedDate, -12, MONTH )
+				        )
+				    )
+				RETURN
+				    Result
+			ordinal: 3
+
+	column 'Trend Period'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Name
+		sortByColumn: Ordinal
+
+	column Ordinal
+		dataType: int64
+		isHidden
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: Ordinal
+
